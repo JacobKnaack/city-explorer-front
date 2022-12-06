@@ -3,6 +3,8 @@ import map from '../images/map.png';
 import restaurantData from '../data/restaurants.json';
 import locationData from '../data/location.json';
 import axios from 'axios';
+import Alert from 'react-bootstrap/Alert';
+import Button from 'react-bootstrap/Button';
 const ACCESS_KEY = process.env.REACT_APP_ACCESS_KEY;
 
 class Search extends React.Component {
@@ -11,7 +13,8 @@ class Search extends React.Component {
     this.state = {
       locationSearch: '',
       restaurantData: restaurantData,
-      locationData: locationData
+      locationData: locationData,
+      error: null,
     }
   }
 
@@ -24,14 +27,45 @@ class Search extends React.Component {
     }
 
     // make our location IQ request;
-    let response = await axios(request);
-    this.setState({
-      locationSearch: e.target.search.value,
-      locationData: response.data[0],
-    });
+    try {
+      let response = await axios(request);
+
+      // we never get to this line of code if we get an error;
+      this.setState({
+        locationSearch: e.target.search.value,
+        locationData: response.data[0],
+      }, () => this.handlePokemonSearch('pikachu'));
+      // really handy for examining and capturing errors.
+    } catch (err) {
+      console.log('Error occurred while requesting');
+      this.setState({ error: err.response.data });
+    }
   }
 
+  handlePokemonSearch = async (pokemonName) => {
+    let request = {
+      method: 'GET',
+      url: `http://localhost:3001/pokemon?name=${pokemonName}`
+    }
+    try {
+      let response = await axios(request);
+
+      this.setState({
+        pokemonData: response.data,
+      });
+    } catch (err) {
+      console.log('Error occurred while requesting');
+      this.setState({ error: err.response.data });
+    }
+
+  };
+
+  handleError = () => {
+    this.setState({ error: null });
+  } 
+
   render() {
+    console.log(this.state);
     return (
       <div id="city-search">
         <form onSubmit={this.handleLocationSearch}>
@@ -39,9 +73,23 @@ class Search extends React.Component {
           <input type="text" name="search" placeholder="Enter City here"/>
           <button type="submit">Explore!</button>
         </form>
+        {this.state.error
+          ? <Alert>
+              {JSON.stringify(this.state.error)}
+              <Button onClick={this.handleError}>Thanks go away</Button>
+            </Alert>
+          : null
+        }
         {this.state.locationData 
           ? <p>{this.state.locationData.display_name}</p>
           : <p>Please search for a city!</p>
+        }
+        {this.state.pokemonData
+          ? <div>
+              <p>Name: {this.state.pokemonData.name}</p>
+              <p>type: {this.state.pokemonData.type}</p>
+            </div>
+          : null
         }
         {this.state.locationSearch && this.state.locationData
           ? <div id="map"><img src={map} alt="location map"/></div>
